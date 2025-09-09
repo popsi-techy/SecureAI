@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import axios from 'axios'; // Import axios
 
 type ScanMode = 'url' | 'zip';
 
@@ -10,6 +11,12 @@ export const ScanForm = () => {
   const [url, setUrl] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  // New state variables for UI feedback
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -26,14 +33,33 @@ export const ScanForm = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Updated handleSubmit function
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    // For now, we'll only handle the URL submission to test the backend API
     if (mode === 'url') {
-      console.log('Submitting URL:', url);
-      // TODO: Send to backend API
-    } else {
-      console.log('Submitting File:', file?.name);
-      // TODO: Upload file and send path to backend API
+      try {
+        const payload = {
+          type: 'url',
+          value: url,
+        };
+        const response = await axios.post('http://localhost:8080/v1/scan', payload);
+        setSuccessMessage(response.data.message);
+      } catch (err) {
+        setError('Failed to start scan. Please check the backend server.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    } else if (mode === 'zip') {
+      // We will implement the file upload logic in a later step
+      console.log('File upload not implemented yet.');
+      setSuccessMessage('File upload logic is next!');
+      setLoading(false);
     }
   };
 
@@ -67,6 +93,7 @@ export const ScanForm = () => {
       </div>
 
       <form onSubmit={handleSubmit}>
+        {/* Form content remains the same... */}
         {mode === 'url' ? (
           // URL Input
           <div>
@@ -110,13 +137,19 @@ export const ScanForm = () => {
           </div>
         )}
 
+        {/* UI Feedback Section */}
+        <div className="mt-4">
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          {successMessage && <p className="text-sm text-green-600">{successMessage}</p>}
+        </div>
+
         <div className="pt-5">
           <button
             type="submit"
-            disabled={mode === 'url' ? !url : !file}
+            disabled={loading || (mode === 'url' ? !url : !file)}
             className="w-full justify-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
-            Start Scan
+            {loading ? 'Scanning...' : 'Start Scan'}
           </button>
         </div>
       </form>
